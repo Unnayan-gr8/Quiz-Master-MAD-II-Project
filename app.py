@@ -3,7 +3,11 @@ from application.database import db
 from application.models import User, Role
 from application.resources import api
 from application.config import LocalDevelopmentConfig
-from flask_security import Security, SQLAlchemySessionUserDatastore, hash_password
+from flask_security import Security, SQLAlchemySessionUserDatastore
+from werkzeug.security import generate_password_hash
+from application.celery_init import celery_init_app
+from celery.schedules import crontab
+from application.tasks import *
 
 def create_app():
     app = Flask(__name__)
@@ -16,6 +20,9 @@ def create_app():
     return app
 
 app = create_app()
+celery = celery_init_app(app)
+celery.autodiscover_tasks()
+
 
 with app.app_context():
     db.create_all()
@@ -24,13 +31,20 @@ with app.app_context():
     db.session.commit()
      
     if not app.security.datastore.find_user(email = "user0@admin.com"):
-        app.security.datastore.create_user(email = "user0@admin.com", password = hash_password("password"), username = "admin01", roles = ["admin"])
+        app.security.datastore.create_user(email = "user0@admin.com", password = generate_password_hash("password"), username = "admin01", roles = ["admin"])
     
     if not app.security.datastore.find_user(email = "user1@user.com"):
-        app.security.datastore.create_user(email = "user1@user.com", password = hash_password("123456"), username = "user01", roles = ["user"])
+        app.security.datastore.create_user(email = "user1@user.com", password = generate_password_hash("123456"), username = "user01", roles = ["user"])
     
     db.session.commit()
     
 from application.routes import *
+@celery.on_after_finalize.connect
+def setup_periodic_tasks(sender, **kwargs):
+    sender.add_periodic_task(
+        crontab(minute='*/2'),
+        monthly_report.s(),
+    )
+
 if __name__ == "__main__":
     app.run()

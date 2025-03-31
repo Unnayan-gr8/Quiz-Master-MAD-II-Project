@@ -14,10 +14,10 @@ class User(db.Model, UserMixin):
     scores = db.relationship('Score', backref = 'user')
 
 class Role(db.Model, RoleMixin):
-    id = db.Column(db.Integer, primary_key = True)
-    name = db.Column(db.String, unique = True, nullable = False)
-    description = db.Column(db.String, nullable = False)
-    users = db.relationship('User', backref = 'role', secondary = 'users_roles')
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String, unique=True, nullable=False)
+    description = db.Column(db.String, nullable=False)
+
 
 class UsersRoles(db.Model):
     id = db.Column(db.Integer, primary_key = True)
